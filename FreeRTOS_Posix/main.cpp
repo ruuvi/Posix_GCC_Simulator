@@ -189,7 +189,11 @@ template<typename Lock, typename ObjectType, size_t Size> class MemoryPool {
 
 public:
 
-    MemoryPool(const char* name) : name(name) {}
+    MemoryPool(const char* name) : name(name) {
+        for (int i = 0;i < Size;i++) {
+            pool.push(&objects[i]);
+        }
+    }
 
     ~MemoryPool() {}
 
@@ -210,10 +214,35 @@ public:
 protected:
     const char* name;
     Stack<ObjectType, LockDummy,  Size> pool;
+    ObjectType objects[Size];
 };
 
+
+class JobThread {
+
+public:
+    JobThread() {}
+
+    void start() {
+    }
+
+    void join() {
+    }
+
+    void stop() {
+    }
+
+protected:
+    static void mainLoop(JobThread &jobThread);
+};
+
+MemoryPool<LockDummy, JobThread, 3> jobThreads("poolOfThreads");
 int main( void )
 {
+
+    JobThread *jobThread;
+    jobThreads.allocate(&jobThread);
+
 
 	return 1;
 }
