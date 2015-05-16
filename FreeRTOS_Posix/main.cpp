@@ -217,32 +217,48 @@ protected:
     ObjectType objects[Size];
 };
 
+typedef void (*jobPtr)(void);
 
 class JobThread {
 
 public:
-    JobThread() {}
-
-    void start() {
+    JobThread() {
+        static const char *name = "a job";
+        portBASE_TYPE res = xTaskCreate((pdTASK_CODE)mainLoop, (const signed char *)name, 300, this, 1, &this->pxCreatedTask);
+        if (res != pdPASS) {
+            cout << "Failed to create a task" << endl;
+        }
     }
 
-    void join() {
-    }
-
-    void stop() {
+    void start(jobPtr job) {
+        this->job = job;
+        cout << "Start" << endl;
     }
 
 protected:
-    static void mainLoop(JobThread &jobThread);
+
+    static void mainLoop(JobThread *jobThread) {
+        while (true) {
+
+            jobThread->job();
+        }
+    }
+
+    jobPtr job = nullptr;
+    xTaskHandle pxCreatedTask;
 };
 
 MemoryPool<LockDummy, JobThread, 3> jobThreads("poolOfThreads");
+void myPrintJob() {
+    cout << "Print job is running" << endl;
+}
+
 int main( void )
 {
 
     JobThread *jobThread;
     jobThreads.allocate(&jobThread);
-
+    jobThread->start(myPrintJob);
 
 	return 1;
 }
