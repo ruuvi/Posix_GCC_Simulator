@@ -1,5 +1,8 @@
 
 /* System headers. */
+
+extern "C" {
+
 #include <stdio.h>
 #include <time.h>
 #include <sys/time.h>
@@ -13,7 +16,6 @@
 #include <errno.h>
 #include <unistd.h>
 
-extern "C" {
 #include "FreeRTOS.h"
 #include "task.h"
 #include "queue.h"
@@ -44,8 +46,23 @@ extern "C" {
 #include "AsyncIO/PosixMessageQueueIPC.h"
 #include "AsyncIO/AsyncIOSerial.h"
 
+
 void vApplicationIdleHook( void );
 }
+
+#include <string>
+#include <cstring>
+#include <iterator>
+#include <iostream>
+#include <algorithm>
+#include <array>
+#include <limits>
+#include <atomic>
+#include <cstdint>
+
+
+using namespace std;
+
 
 static unsigned long uxQueueSendPassedCount = 0;
 void vMainQueueSendPassed( void )
@@ -59,6 +76,141 @@ void vApplicationIdleHook( void )
 {
     vCoRoutineSchedule();   /* Comment this out if not using Co-routines. */
 }
+
+
+class SynchroObjectDummy {
+
+    SynchroObjectDummy() {};
+
+public:
+
+    static inline void get() {
+    }
+
+    static inline void release() {
+    }
+
+};// class SynchroObjectDummy
+
+template<typename Mutex> class Lock {
+
+public:
+    inline Lock() {
+        Mutex::get();
+    }
+
+    inline ~Lock() {
+        Mutex::release();
+    }
+};// class Lock
+
+/**
+ * Instantiate a new type - lock which does nothing
+ */
+typedef Lock<SynchroObjectDummy> LockDummy;
+
+class StackBase {
+
+public:
+    inline bool isEmpty() {
+        bool res = (this->top == 0);
+        return res;
+    }
+
+    inline bool isFull() {
+        bool res = (this->top == size);
+        return res;
+    }
+
+protected:
+    StackBase(size_t size) {
+        this->size = size;
+        this->top = 0;
+    }
+
+    void errorOverflow() {
+    }
+
+    void errorUnderflow() {
+    }
+
+    size_t top;
+    size_t size;
+
+};// StackBase
+
+template<typename ObjectType, typename Lock, std::size_t Size>
+class Stack: public StackBase {
+public:
+
+    Stack() :
+        StackBase(Size) {
+    }
+
+    ~Stack() {
+    }
+
+    inline bool push(ObjectType* object);
+    inline bool pop(ObjectType** object);
+
+private:
+
+    ObjectType* data[Size + 1];
+};// class Stack
+
+template<typename ObjectType, typename Lock, std::size_t Size>
+inline bool Stack<ObjectType, Lock, Size>::push(ObjectType* object) {
+    Lock();
+    if (!isFull()) {
+        data[this->top] = object;
+        this->top++;
+        return true;
+    } else {
+        errorOverflow();
+        return false;
+    }
+
+}
+
+template<typename ObjectType, typename Lock, std::size_t Size>
+inline bool Stack<ObjectType, Lock, Size>::pop(ObjectType** object) {
+    Lock();
+    if (!isEmpty()) {
+        this->top--;
+        *object = (data[this->top]);
+        return true;
+    } else {
+        errorUnderflow();
+        return false;
+    }
+}
+
+template<typename Lock, typename ObjectType, size_t Size> class MemoryPool {
+
+public:
+
+    MemoryPool(const char* name) : name(name) {}
+
+    ~MemoryPool() {}
+
+    inline bool allocate(ObjectType **obj) {
+        bool res;
+        Lock();
+        res = pool.pop(obj);
+        return res;
+    }
+
+    inline bool free(ObjectType *obj) {
+        bool res;
+        Lock();
+        res = pool.push(obj);
+        return res;
+    }
+
+protected:
+    const char* name;
+    Stack<ObjectType, LockDummy,  Size> pool;
+};
 
 int main( void )
 {
