@@ -234,7 +234,8 @@ protected:
     static void mainLoop(JobThread *jobThread);
 };
 
-JobThread::JobThread() : job(nullptr) {
+template<typename JobType>
+JobThread<JobType>::JobThread() : job(nullptr) {
     static const char *name = "a job";
     vSemaphoreCreateBinary(this->signal);
     portBASE_TYPE res = xTaskCreate((pdTASK_CODE)mainLoop, (const signed char *)name, 300, this, 1, &this->pxCreatedTask);
@@ -243,34 +244,39 @@ JobThread::JobThread() : job(nullptr) {
     }
 }
 
-void JobThread::start(jobPtr job) {
+template<typename JobType>
+void JobThread<JobType>::start(JobType *job) {
     this->job = job;
     xSemaphoreGive(this->signal);
 }
 
-void JobThread::mainLoop(JobThread *jobThread) {
+template<typename JobType>
+void JobThread<JobType>::mainLoop(JobThread *jobThread) {
     while (true) {
         xSemaphoreTake(jobThread->signal, portMAX_DELAY);
         if (jobThread->job != nullptr) {
-            jobThread->job();
+            jobThread->job->run();
         }
         jobThread->job = nullptr;
     }
 }
 
 
+struct PrintJob {
+    void run(void) {
+        cout << "Print job is running" << endl;
+    }
+};
 
-MemoryPool<LockDummy, JobThread, 3> jobThreads;
-void myPrintJob() {
-    cout << "Print job is running" << endl;
-}
+MemoryPool<LockDummy, JobThread<PrintJob>, 3> jobThreads;
+PrintJob printJob;
 
 int main( void )
 {
 
-    JobThread *jobThread;
+    JobThread<PrintJob> *jobThread;
     jobThreads.allocate(&jobThread);
-    jobThread->start(myPrintJob);
+    jobThread->start(&printJob);
 
     vTaskStartScheduler();
 
