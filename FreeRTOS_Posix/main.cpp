@@ -243,8 +243,13 @@ public:
 protected:
 
     static void mainLoop(JobThread *jobThread) {
+        cout << "Main loop" << endl;
         while (true) {
-            jobThread->job();
+            sleep(10);
+            if (jobThread->job != nullptr) {
+                jobThread->job();
+            }
+            jobThread->job = nullptr;
         }
     }
 
