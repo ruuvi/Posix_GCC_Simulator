@@ -219,11 +219,24 @@ protected:
 
 typedef void (*jobPtr)(void);
 
+class JobThread;
+static void mainLoop(JobThread *jobThread) {
+    cout << "Main loop" << endl;
+    while (true) {
+        sleep(10);
+        if (jobThread->job != nullptr) {
+            jobThread->job();
+        }
+        jobThread->job = nullptr;
+    }
+}
+
 class JobThread {
 
 public:
     JobThread() {
         static const char *name = "a job";
+        cout << "Create job " << jobCount++ << endl;
         portBASE_TYPE res = xTaskCreate((pdTASK_CODE)mainLoop, (const signed char *)name, 300, this, 1, &this->pxCreatedTask);
         if (res != pdPASS) {
             cout << "Failed to create a task" << endl;
@@ -242,20 +255,13 @@ public:
 
 protected:
 
-    static void mainLoop(JobThread *jobThread) {
-        cout << "Main loop" << endl;
-        while (true) {
-            sleep(10);
-            if (jobThread->job != nullptr) {
-                jobThread->job();
-            }
-            jobThread->job = nullptr;
-        }
-    }
 
     jobPtr job = nullptr;
     xTaskHandle pxCreatedTask;
+    static int jobCount;
 };
+
+int JobThread::jobCount = 0;
 
 MemoryPool<LockDummy, JobThread, 3> jobThreads("poolOfThreads");
 void myPrintJob() {
