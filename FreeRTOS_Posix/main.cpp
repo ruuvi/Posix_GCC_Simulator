@@ -235,11 +235,15 @@ public:
         cout << "Start" << endl;
     }
 
+    static inline void sleep(long time) {
+        vTaskDelay(time);
+
+    }
+
 protected:
 
     static void mainLoop(JobThread *jobThread) {
         while (true) {
-
             jobThread->job();
         }
     }
@@ -259,6 +263,8 @@ int main( void )
     JobThread *jobThread;
     jobThreads.allocate(&jobThread);
     jobThread->start(myPrintJob);
+
+    JobThread::sleep(100);
 
 	return 1;
 }
