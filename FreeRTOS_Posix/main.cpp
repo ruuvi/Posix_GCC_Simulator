@@ -218,17 +218,16 @@ protected:
 };
 
 
-class JobThread {
+template <typename JobType> class JobThread {
 public:
 
     JobThread();
 
-    typedef void (*jobPtr)(void);
-    void start(jobPtr job);
+    void start(JobType *job);
 
 protected:
 
-    jobPtr job;
+    JobType *job;
     xTaskHandle pxCreatedTask;
     xQueueHandle signal;
 
