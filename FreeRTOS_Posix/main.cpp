@@ -21,6 +21,7 @@ extern "C" {
 #include "queue.h"
 #include "croutine.h"
 #include "partest.h"
+#include "semphr.h"
 
 /* Demo file headers. */
 #include "BlockQ.h"
@@ -189,7 +190,7 @@ template<typename Lock, typename ObjectType, size_t Size> class MemoryPool {
 
 public:
 
-    MemoryPool(const char* name) : name(name) {
+    MemoryPool() {
         for (int i = 0;i < Size;i++) {
             pool.push(&objects[i]);
         }
@@ -212,18 +213,45 @@ public:
     }
 
 protected:
-    const char* name;
     Stack<ObjectType, LockDummy,  Size> pool;
     ObjectType objects[Size];
 };
 
-typedef void (*jobPtr)(void);
 
-class JobThread;
-static void mainLoop(JobThread *jobThread) {
-    cout << "Main loop" << endl;
+class JobThread {
+public:
+
+    JobThread();
+
+    typedef void (*jobPtr)(void);
+    void start(jobPtr job);
+
+protected:
+
+    jobPtr job;
+    xTaskHandle pxCreatedTask;
+    xQueueHandle signal;
+
+    static void mainLoop(JobThread *jobThread);
+};
+
+JobThread::JobThread() : job(nullptr) {
+    static const char *name = "a job";
+    vSemaphoreCreateBinary(this->signal);
+    portBASE_TYPE res = xTaskCreate((pdTASK_CODE)mainLoop, (const signed char *)name, 300, this, 1, &this->pxCreatedTask);
+    if (res != pdPASS) {
+        cout << "Failed to create a task" << endl;
+    }
+}
+
+void JobThread::start(jobPtr job) {
+    this->job = job;
+    xSemaphoreGive(this->signal);
+}
+
+void JobThread::mainLoop(JobThread *jobThread) {
     while (true) {
-        sleep(10);
+        xSemaphoreTake(jobThread->signal, portMAX_DELAY);
         if (jobThread->job != nullptr) {
             jobThread->job();
         }
@@ -231,39 +259,9 @@ static void mainLoop(JobThread *jobThread) {
     }
 }
 
-class JobThread {
-
-public:
-    JobThread() {
-        static const char *name = "a job";
-        cout << "Create job " << jobCount++ << endl;
-        portBASE_TYPE res = xTaskCreate((pdTASK_CODE)mainLoop, (const signed char *)name, 300, this, 1, &this->pxCreatedTask);
-        if (res != pdPASS) {
-            cout << "Failed to create a task" << endl;
-        }
-    }
-
-    void start(jobPtr job) {
-        this->job = job;
-        cout << "Start" << endl;
-    }
-
-    static inline void sleep(long time) {
-        vTaskDelay(time);
-
-    }
-
-protected:
 
 
-    jobPtr job = nullptr;
-    xTaskHandle pxCreatedTask;
-    static int jobCount;
-};
-
-int JobThread::jobCount = 0;
-
-MemoryPool<LockDummy, JobThread, 3> jobThreads("poolOfThreads");
+MemoryPool<LockDummy, JobThread, 3> jobThreads;
 void myPrintJob() {
     cout << "Print job is running" << endl;
 }
@@ -275,7 +273,7 @@ int main( void )
     jobThreads.allocate(&jobThread);
     jobThread->start(myPrintJob);
 
-    JobThread::sleep(100);
+    vTaskStartScheduler();
 
 	return 1;
 }
