@@ -231,7 +231,7 @@ protected:
     xTaskHandle pxCreatedTask;
     xQueueHandle signal;
 
-    static void mainLoop(JobThread *jobThread);
+    void mainLoop();
 };
 
 template<typename JobType>
@@ -251,13 +251,13 @@ void JobThread<JobType>::start(JobType *job) {
 }
 
 template<typename JobType>
-void JobThread<JobType>::mainLoop(JobThread *jobThread) {
+void JobThread<JobType>::mainLoop() {
     while (true) {
-        xSemaphoreTake(jobThread->signal, portMAX_DELAY);
-        if (jobThread->job != nullptr) {
-            jobThread->job->run();
+        xSemaphoreTake(signal, portMAX_DELAY);
+        if (job != nullptr) {
+            job->run();
         }
-        jobThread->job = nullptr;
+        job = nullptr;
     }
 }
 
