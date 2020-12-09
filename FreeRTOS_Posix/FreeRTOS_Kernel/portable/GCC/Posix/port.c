@@ -772,3 +772,19 @@ struct tms xTimes;
 	(void)ulTotalTime;
 }
 /*-----------------------------------------------------------*/
+
+static BaseType_t g_xPortInIsrContext;
+
+/*
+ * Returns true if the current core is in ISR context; low prio ISR, med prio ISR or timer tick ISR. High prio ISRs
+ * aren't detected here, but they normally cannot call C code, so that should not be an issue anyway.
+ */
+BaseType_t xPortInIsrContext(void)
+{
+    return g_xPortInIsrContext;
+}
+
+void xPortSetIsInIsrContext(const BaseType_t isInIsrContext)
+{
+    g_xPortInIsrContext = isInIsrContext;
+}

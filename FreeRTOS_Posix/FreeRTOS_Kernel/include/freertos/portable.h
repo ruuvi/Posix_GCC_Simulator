@@ -173,6 +173,14 @@ void vPortEndScheduler( void ) PRIVILEGED_FUNCTION;
 	void vPortStoreTaskMPUSettings( xMPU_SETTINGS *xMPUSettings, const struct xMEMORY_REGION * const xRegions, StackType_t *pxBottomOfStack, uint32_t ulStackDepth ) PRIVILEGED_FUNCTION;
 #endif
 
+/*
+ * Returns true if the current core is in ISR context; low prio ISR, med prio ISR or timer tick ISR. High prio ISRs
+ * aren't detected here, but they normally cannot call C code, so that should not be an issue anyway.
+ */
+BaseType_t xPortInIsrContext(void);
+
+void xPortSetIsInIsrContext(const BaseType_t isInIsrContext);
+
 #ifdef __cplusplus
 }
 #endif
