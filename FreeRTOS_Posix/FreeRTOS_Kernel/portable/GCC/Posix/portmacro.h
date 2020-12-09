@@ -39,7 +39,7 @@ extern void vPortYield( void );
 extern void vTaskSwitchContext( void );
 #define portYIELD() vPortYield()
 #define portEND_SWITCHING_ISR( xSwitchRequired ) if( xSwitchRequired ) vPortYieldFromISR()
-#define portYIELD_FROM_ISR( x ) portEND_SWITCHING_ISR( x )
+#define portYIELD_FROM_ISR() vPortYieldFromISR()
 
 
 /* Critical section management. */
